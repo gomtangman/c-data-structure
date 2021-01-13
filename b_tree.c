@@ -294,7 +294,7 @@ void delete_b_tree(struct b_tree *btr ,struct Node *target_node, int target_key)
             struct Node *adj_node;
             struct Node *child_node = target_node->child[i];
             int split_key;
-            if ( i == target_node->num_key || (i && target_node->child[i + 1]->num_key == t - 1))
+            if (i == target_node->num_key || (i && target_node->child[i + 1]->num_key == t - 1))
             {
                 printf("i and num_key is %d, %d and adj_node is i - 1\n", i, target_node->num_key);
                 // i- split_key가 나눈다
@@ -314,7 +314,7 @@ void delete_b_tree(struct b_tree *btr ,struct Node *target_node, int target_key)
             {
                 if (split_key)
                 {
-                    for (int j = 0; j < child_node->num_key; j++)
+                    for (int j = child_node->num_key - 1; j >= 0; j--)
                     {
                         child_node->key[j + 1] = child_node->key[j];
                         child_node->value[j + 1] = child_node->value[j];
@@ -323,11 +323,14 @@ void delete_b_tree(struct b_tree *btr ,struct Node *target_node, int target_key)
                     child_node->value[0] = target_node->value[i - 1];
 
                     target_node->key[i - split_key] = adj_node->key[adj_node->num_key - 1];
-                    for (int j = 0; j <= child_node->num_key; j++)
+                    if (!child_node->leaf)
                     {
-                        child_node->child[j + 1] = child_node->child[j];
+                        for (int j = child_node->num_key; j >= 0; j--)
+                        {
+                            child_node->child[j + 1] = child_node->child[j];
+                        }
+                        child_node->child[0] = adj_node->child[adj_node->num_key];
                     }
-                    child_node->child[0] = adj_node->child[adj_node->num_key];
 
                     child_node->num_key++;
                     adj_node->num_key--;
@@ -338,11 +341,19 @@ void delete_b_tree(struct b_tree *btr ,struct Node *target_node, int target_key)
                     child_node->value[child_node->num_key] = target_node->value[i - split_key];
 
                     target_node->key[i - split_key] = adj_node->key[0];
-
-                    child_node->child[child_node->num_key + 1] = adj_node->child[0];
-                    for (int j = 1; j < adj_node->num_key; j++)
+                    for (int j = 1; j < adj_node->num_key; j ++)
                     {
-                        adj_node->child[j - 1] = adj_node->child[j];
+                        adj_node->key[j - 1] = adj_node->key[j];
+                        adj_node->value[j - 1] = adj_node->value[j];
+                    }
+
+                    if (!child_node->leaf)
+                    {
+                        child_node->child[child_node->num_key + 1] = adj_node->child[0];
+                        for (int j = 1; j <= adj_node->num_key; j++)
+                        {
+                            adj_node->child[j - 1] = adj_node->child[j];
+                        }
                     }
 
                     child_node->num_key++;
@@ -374,15 +385,25 @@ void delete_b_tree(struct b_tree *btr ,struct Node *target_node, int target_key)
                         child_node->value[j] = adj_node->value[j];
                     }
 
-                    for (int j = 0; j <= child_node->num_key; j++)
+                    // target_node의 child 당기기
+                    for (int j = i - split_key + 1; j <= target_node->num_key; j++)
                     {
-                        child_node->child[j + t] = child_node->child[j];
-                        child_node->child[j] = adj_node->child[j];
+                        target_node->child[j - 1] = target_node->child[j];
+                    }
+
+                    if (!child_node->leaf)
+                    {
+                        for (int j = 0; j <= child_node->num_key; j++)
+                        {
+                            child_node->child[j + t] = child_node->child[j];
+                            child_node->child[j] = adj_node->child[j];
+                        }
                     }
 
                     free(adj_node);
                     target_node->num_key--;
                     child_node->num_key = 2*t - 1;
+                    i--;
                 }
                 else
                 {
@@ -399,9 +420,18 @@ void delete_b_tree(struct b_tree *btr ,struct Node *target_node, int target_key)
                         child_node->value[j + t] = adj_node->value[j];
                     }
 
-                    for (int j = 0; j <= child_node->num_key; j++)
+                    // target_node의 child 당기기
+                    for (int j = i - split_key + 2; j <= target_node->num_key; j++)
                     {
-                        child_node->child[j + t] = adj_node->child[j];
+                        target_node->child[j - 1] = target_node->child[j];
+                    }
+
+                    if (!child_node->leaf)
+                    {
+                        for (int j = 0; j <= child_node->num_key; j++)
+                        {
+                            child_node->child[j + t] = adj_node->child[j];
+                        }
                     }
 
                     free(adj_node);
@@ -433,6 +463,58 @@ int main()
 
     create_b_tree(&my_btr);
     printf("function call is done, num_key is %d\n", my_btr.root->num_key);
+
+    // // 순서대로 넣기
+    // for (int i = 1; i <= 36; i++)
+    // {
+    //     int temp_key = i;
+    //     int temp_value = i*i + 3*i + 2;
+
+    //     insert_b_tree(&my_btr, temp_key, temp_value);
+    //     printf("insert %d keys in b_tree done and root has key[0] %d\n", i, my_btr.root->key[0]);
+    // }
+
+    // 랜덤하게 넣기
+    int key_arr[35] = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 9, 39, 101, 102, 103, 104, 161, 191, 251};
+    for (int i = 0; i < 35; i++)
+    {
+        int temp_key = key_arr[i];
+        int temp_value = temp_key;
+
+        insert_b_tree(&my_btr, temp_key, temp_value);
+        printf("insert %d keys in b_tree done and root has key[0] %d\n", i + 1, my_btr.root->key[0]);
+    }
+
+    // b_tree 삭제
+    int input_key[15] = {103, 70, 130, 104, 60, 120, 240, 160, 180, 250, 20, 80, 102, 50, 90};
+    for (int i = 0; i < 15; i++)
+    {
+        int del_key = input_key[i];
+        delete_b_tree(&my_btr, my_btr.root, del_key);
+    }
+    
+
+    // b_tree 검색
+    int count = 0;
+    for (int i = 0; i < 35; i++)
+    {
+        struct Answer search_res = search_b_tree(my_btr.root, key_arr[i]);
+        printf("key %d is in node %p index %d\n", key_arr[i], search_res.res_node, search_res.res_index);
+        if (search_res.res_index == -1)
+        {
+            count++;
+        }
+        else
+        {
+            printf("value of key %d is %d\n", key_arr[i], search_res.res_node->value[search_res.res_index]);
+        }
+        
+    }
+
+    printf("%d\n", count);
+
+
+
 
     // // 서브루틴 테스트용 트리 생성
     // struct Node temp_node1;
@@ -472,46 +554,6 @@ int main()
     // // 덜 찬 노드에 넣기 테스트
     // insert_nonfull_b_tree(my_btr.root, 4, 77);
     // printf("insert done and key inserted is %d", my_btr.root->child[1]->key[1]);
-
-    // for (int i = 1; i <= 20; i++)
-    // {
-    //     int temp_key = i;
-    //     int temp_value = i*i + 3*i + 2;
-
-    //     insert_b_tree(&my_btr, temp_key, temp_value);
-    //     printf("insert i keys in b_tree done and root has key[0] %d\n", my_btr.root->key[0]);
-    // }
-
-    // // b_tree 검색
-    // for (int i = 1; i <= 20; i++)
-    // {
-    //     struct Answer search_res = search_b_tree(my_btr.root, i);
-    //     printf("key %d is in node %p index %d\n", i, search_res.res_node, search_res.res_index);
-    // }
-
-
-
-
-    int key_arr[36] = {10, 11, 12, 13, 14, 22, 23, 4, 5, 6, 15, 21, 16, 17, 1, 33, 34, 7, 30, 31, 32, 9, 18, 19, 35, 36, 24, 25, 29, 2, 3, 8, 20, 26, 27, 28};
-    for (int i = 0; i < 36; i++)
-    {
-        int temp_key = key_arr[i];
-        int temp_value = temp_key*temp_key + 3*temp_key + 2;
-
-        insert_b_tree(&my_btr, temp_key, temp_value);
-        printf("insert i keys in b_tree done and root has key[0] %d\n", my_btr.root->key[0]);
-    }
-
-
-
-
-
-    // b_tree 삭제
-    printf("type key value to delete\n");
-    int input_key;
-    scanf("%d", &input_key);
-    printf("%d\n", my_btr.root->key[0]);
-    delete_b_tree(&my_btr, my_btr.root, input_key);
 
     return 0;
 }
